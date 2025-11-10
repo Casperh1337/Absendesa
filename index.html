@@ -1,0 +1,3431 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Absensi Perangkat Desa</title>
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <!-- Firebase Realtime Database -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <script>
+      // TODO: Ganti dengan konfigurasi Firebase Anda
+      const firebaseConfig = {
+        apiKey: "AIzaSyDNeq-If56Dk1-HDYQffA7aoe-Pvnx-ncU",
+        authDomain: "absen-online-c6f7a.firebaseapp.com",
+        databaseURL: "https://absen-online-c6f7a-default-rtdb.firebaseio.com",
+        projectId: "absen-online-c6f7a",
+        storageBucket: "absen-online-c6f7a.firebasestorage.app",
+        messagingSenderId: "992423878163",
+        appId: "1:992423878163:web:8b59ab6e6462ceaa8c69e6",
+        measurementId: "G-YWW42990NL",
+      };
+
+      // Inisialisasi Firebase
+      firebase.initializeApp(firebaseConfig);
+      // Referensi ke database
+      const db = firebase.database();
+    </script>
+    <script src="/_sdk/data_sdk.js"></script>
+    <script src="/_sdk/element_sdk.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <style>
+      body {
+        box-sizing: border-box;
+      }
+
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+      * {
+        font-family: "Inter", sans-serif;
+      }
+
+      .clock-display {
+        font-family: "Inter", monospace;
+        letter-spacing: 1px;
+        font-weight: 700;
+      }
+
+      .attendance-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(10px);
+      }
+
+      .attendance-card:hover {
+        transform: translateY(-4px) scale(1.01);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.12);
+      }
+
+      .glass-effect {
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+      }
+
+      .gradient-text {
+        background: linear-gradient(135deg, #16a34a 0%, #059669 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .input-modern {
+        transition: all 0.3s ease;
+      }
+
+      .input-modern:focus {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(22, 163, 74, 0.15);
+      }
+
+      .btn-modern {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+      }
+
+      .btn-modern:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 28px rgba(22, 163, 74, 0.3);
+      }
+
+      .btn-modern:active {
+        transform: translateY(0);
+      }
+
+      .status-badge {
+        animation: fadeIn 0.5s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .pulse-animation {
+        animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.8;
+        }
+      }
+
+      .card-shadow {
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+      }
+
+      .toggle-switch {
+        position: relative;
+        width: 60px;
+        height: 30px;
+        background-color: #e5e7eb;
+        border-radius: 15px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+
+      .toggle-switch.active {
+        background-color: #16a34a;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 24px;
+        height: 24px;
+        background-color: white;
+        border-radius: 50%;
+        transition: transform 0.3s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+
+      .toggle-switch.active .toggle-slider {
+        transform: translateX(30px);
+      }
+
+      /* Modal Konfirmasi Hapus */
+      #delete-modal {
+        display: none;
+        position: fixed;
+        z-index: 50;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); /* Warna gelap transparan */
+      }
+
+      #delete-modal-content {
+        background-color: #fefefe;
+        margin: 15% auto; /* Posisi vertikal */
+        padding: 20px;
+        border: none;
+        border-radius: 10px;
+        width: 80%;
+        max-width: 500px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      #delete-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+      }
+
+      #delete-modal-header h3 {
+        font-size: 1.25rem;
+        font-weight: bold;
+        color: #ef4444; /* Merah */
+      }
+
+      #delete-modal-close {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #9ca3af; /* Abu-abu */
+      }
+
+      #delete-modal-close:hover {
+        color: #ef4444; /* Merah saat hover */
+      }
+
+      #delete-modal-body {
+        margin-bottom: 20px;
+      }
+
+      #delete-modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+      }
+
+      .delete-modal-btn {
+        padding: 8px 16px;
+        border-radius: 5px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background-color 0.2s;
+      }
+
+      .delete-modal-btn-cancel {
+        background-color: #e5e7eb; /* Abu-abu muda */
+        color: #374151; /* Abu-abu gelap */
+      }
+
+      .delete-modal-btn-cancel:hover {
+        background-color: #d1d5db; /* Abu-abu lebih gelap saat hover */
+      }
+
+      .delete-modal-btn-confirm {
+        background-color: #ef4444; /* Merah */
+        color: white;
+      }
+
+      .delete-modal-btn-confirm:hover {
+        background-color: #dc2626; /* Merah lebih gelap saat hover */
+      }
+    </style>
+    <style>
+      @view-transition {
+        navigation: auto;
+      }
+    </style>
+  </head>
+  <body class="min-h-full bg-gradient-to-br from-green-50 to-blue-50 p-6">
+    <!-- Navigation Bar -->
+    <nav
+      class="glass-effect rounded-2xl card-shadow p-4 mb-6 max-w-5xl mx-auto"
+    >
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <div
+            class="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center"
+          >
+            <svg
+              class="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewbox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              ></path>
+            </svg>
+          </div>
+          <span class="font-bold text-gray-800 text-lg">Sistem Absensi</span>
+        </div>
+        <div class="flex gap-2">
+          <button
+            id="nav-absensi"
+            class="nav-btn px-5 py-2 rounded-xl font-semibold transition-all bg-gradient-to-r from-green-600 to-green-700 text-white shadow-md"
+          >
+            📝 Absensi
+          </button>
+          <button
+            id="nav-admin"
+            class="nav-btn px-5 py-2 rounded-xl font-semibold transition-all bg-white text-gray-700 hover:bg-gray-50"
+          >
+            👨‍💼 Admin
+          </button>
+        </div>
+      </div>
+    </nav>
+    <!-- Halaman Absensi -->
+    <main id="page-absensi" class="max-w-5xl mx-auto">
+      <!-- Header dengan Jam -->
+      <header
+        class="glass-effect rounded-3xl card-shadow p-8 mb-8 relative overflow-hidden"
+      >
+        <div
+          class="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-green-400 to-blue-500 opacity-10 rounded-full -mr-32 -mt-32"
+        ></div>
+        <div
+          class="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-blue-400 to-green-500 opacity-10 rounded-full -ml-24 -mb-24"
+        ></div>
+        <div class="relative z-10">
+          <div class="flex items-center justify-center mb-3">
+            <div
+              class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg mr-4"
+            >
+              <svg
+                class="w-10 h-10 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewbox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                ></path>
+              </svg>
+            </div>
+            <div>
+              <h1
+                id="app-title"
+                class="text-4xl font-extrabold gradient-text mb-1"
+              >
+                Absensi Perangkat Desa
+              </h1>
+              <p id="village-name" class="text-gray-600 font-medium">
+                Desa Contoh
+              </p>
+            </div>
+          </div>
+          <div
+            class="mt-6 bg-gradient-to-r from-green-50 to-blue-50 rounded-2xl p-6 text-center"
+          >
+            <div class="flex items-center justify-center gap-3 mb-2">
+              <svg
+                class="w-6 h-6 text-green-600 pulse-animation"
+                fill="currentColor"
+                viewbox="0 0 20 20"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                  clip-rule="evenodd"
+                ></path>
+              </svg>
+              <div
+                id="current-time"
+                class="clock-display text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-blue-600"
+              ></div>
+            </div>
+            <div
+              id="current-date"
+              class="text-base text-gray-700 font-medium"
+            ></div>
+          </div>
+          <!-- Status Absen -->
+          <div id="status-absen-container" class="mt-6"></div>
+        </div>
+      </header>
+      <!-- Form Absensi -->
+      <section
+        id="form-section"
+        class="glass-effect rounded-3xl card-shadow p-8 mb-8"
+      >
+        <div class="flex items-center gap-3 mb-6">
+          <div
+            class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center"
+          >
+            <svg
+              class="w-7 h-7 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewbox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              ></path>
+            </svg>
+          </div>
+          <h2 class="text-3xl font-bold text-gray-800">Form Absensi</h2>
+        </div>
+        <form id="attendance-form" class="space-y-5">
+          <div>
+            <label
+              for="nama-lengkap"
+              class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2"
+            >
+              <svg
+                class="w-4 h-4 text-green-600"
+                fill="currentColor"
+                viewbox="0 0 20 20"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                  clip-rule="evenodd"
+                ></path>
+              </svg>
+              Nama Lengkap
+            </label>
+            <input
+              type="text"
+              id="nama-lengkap"
+              required
+              class="input-modern w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none bg-white"
+              placeholder="Masukkan nama lengkap Anda"
+            />
+          </div>
+          <div>
+            <label
+              for="jabatan"
+              class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2"
+            >
+              <svg
+                class="w-4 h-4 text-green-600"
+                fill="currentColor"
+                viewbox="0 0 20 20"
+              >
+                <path
+                  d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"
+                ></path>
+              </svg>
+              Jabatan
+            </label>
+            <select
+              id="jabatan"
+              required
+              class="input-modern w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none bg-white appearance-none cursor-pointer"
+              style="
+                background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27currentColor%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e');
+                background-repeat: no-repeat;
+                background-position: right 1rem center;
+                background-size: 1.5em 1.5em;
+              "
+            >
+              <option value="">Pilih Jabatan</option>
+              <option value="Kepala Desa">👑 Kepala Desa</option>
+              <option value="Sekretaris Desa">📋 Sekretaris Desa</option>
+              <option value="Kaur Keuangan">💰 Kaur Keuangan</option>
+              <option value="Kaur Umum">📁 Kaur Umum</option>
+              <option value="Kaur Perencanaan">📊 Kaur Perencanaan</option>
+              <option value="Kasi Pemerintahan">🏛️ Kasi Pemerintahan</option>
+              <option value="Kasi Kesejahteraan">❤️ Kasi Kesejahteraan</option>
+              <option value="Kasi Pelayanan">🤝 Kasi Pelayanan</option>
+              <option value="Kepala Dusun 1">🏘️ Kepala Dusun 1</option>
+              <option value="Kepala Dusun 2">🏘️ Kepala Dusun 2</option>
+              <option value="Kepala Dusun 3">🏘️ Kepala Dusun 3</option>
+              <option value="Staf">👤 Staf</option>
+            </select>
+          </div>
+          <div>
+            <label
+              for="status-kehadiran"
+              class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2"
+            >
+              <svg
+                class="w-4 h-4 text-green-600"
+                fill="currentColor"
+                viewbox="0 0 20 20"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z"
+                  clip-rule="evenodd"
+                ></path>
+              </svg>
+              Status Kehadiran
+            </label>
+            <select
+              id="status-kehadiran"
+              required
+              class="input-modern w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none bg-white appearance-none cursor-pointer"
+              style="
+                background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27currentColor%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e');
+                background-repeat: no-repeat;
+                background-position: right 1rem center;
+                background-size: 1.5em 1.5em;
+              "
+            >
+              <option value="">Pilih Status</option>
+              <option value="Hadir">✅ Hadir</option>
+              <option value="Izin">📝 Izin</option>
+              <option value="Sakit">🏥 Sakit</option>
+              <option value="Cuti">🏖️ Cuti</option>
+              <option value="Alpa">❌ Alpa</option>
+            </select>
+          </div>
+          <button
+            type="submit"
+            id="submit-btn"
+            class="btn-modern w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold py-4 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewbox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+            Kirim Absensi
+          </button>
+        </form>
+        <div
+          id="success-message"
+          class="hidden mt-5 p-4 bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 text-green-800 rounded-xl flex items-center gap-3 shadow-sm"
+        >
+          <svg
+            class="w-6 h-6 text-green-600"
+            fill="currentColor"
+            viewbox="0 0 20 20"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+              clip-rule="evenodd"
+            ></path></svg
+          ><span class="font-semibold">Absensi berhasil disimpan!</span>
+        </div>
+        <div
+          id="error-message"
+          class="hidden mt-5 p-4 bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500 text-red-800 rounded-xl flex items-center gap-3 shadow-sm"
+        >
+          <svg
+            class="w-6 h-6 text-red-600"
+            fill="currentColor"
+            viewbox="0 0 20 20"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+              clip-rule="evenodd"
+            ></path></svg
+          ><span class="font-semibold"></span>
+        </div>
+        <div
+          id="limit-warning"
+          class="hidden mt-5 p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 border-l-4 border-yellow-500 text-yellow-800 rounded-xl flex items-center gap-3 shadow-sm"
+        >
+          <svg
+            class="w-6 h-6 text-yellow-600"
+            fill="currentColor"
+            viewbox="0 0 20 20"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+              clip-rule="evenodd"
+            ></path></svg
+          ><span class="font-semibold"
+            >Batas maksimum 999 data absensi telah tercapai. Silakan hapus
+            beberapa data terlebih dahulu.</span
+          >
+        </div>
+      </section>
+      <!-- Daftar Absensi Hari Ini -->
+      <section class="glass-effect rounded-3xl card-shadow p-8">
+        <div class="flex items-center gap-3 mb-6">
+          <div
+            class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center"
+          >
+            <svg
+              class="w-7 h-7 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewbox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
+              ></path>
+            </svg>
+          </div>
+          <h2 class="text-3xl font-bold text-gray-800">
+            Daftar Absensi Hari Ini
+          </h2>
+        </div>
+        <div id="attendance-list" class="space-y-4">
+          <div class="text-center py-16">
+            <svg
+              class="w-20 h-20 mx-auto text-gray-300 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewbox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+              ></path>
+            </svg>
+            <p class="text-gray-400 text-lg font-medium">
+              Belum ada data absensi hari ini
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <!-- Halaman Login Admin -->
+    <main id="page-login" class="max-w-md mx-auto hidden">
+      <div class="glass-effect rounded-3xl card-shadow p-8">
+        <div class="text-center mb-8">
+          <div
+            class="w-20 h-20 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg mx-auto mb-4"
+          >
+            <svg
+              class="w-12 h-12 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewbox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+              ></path>
+            </svg>
+          </div>
+          <h1 class="text-3xl font-extrabold gradient-text mb-2">
+            Login Admin
+          </h1>
+          <p class="text-gray-600 font-medium">
+            Masukkan password untuk mengakses panel admin
+          </p>
+        </div>
+        <form id="login-form" class="space-y-5">
+          <div>
+            <label
+              for="admin-password"
+              class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2"
+            >
+              <svg
+                class="w-4 h-4 text-purple-600"
+                fill="currentColor"
+                viewbox="0 0 20 20"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
+                  clip-rule="evenodd"
+                ></path>
+              </svg>
+              Password Admin
+            </label>
+            <input
+              type="password"
+              id="admin-password"
+              required
+              class="input-modern w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none bg-white"
+              placeholder="Masukkan password"
+            />
+          </div>
+          <button
+            type="submit"
+            id="login-btn"
+            class="btn-modern w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-bold py-4 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewbox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"
+              ></path>
+            </svg>
+            Login
+          </button>
+        </form>
+        <div
+          id="login-error"
+          class="hidden mt-5 p-4 bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500 text-red-800 rounded-xl flex items-center gap-3 shadow-sm"
+        >
+          <svg
+            class="w-6 h-6 text-red-600"
+            fill="currentColor"
+            viewbox="0 0 20 20"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+              clip-rule="evenodd"
+            ></path></svg
+          ><span class="font-semibold">Password salah! Silakan coba lagi.</span>
+        </div>
+        <div class="mt-6 text-center">
+          <button
+            id="back-to-absensi"
+            class="text-purple-600 hover:text-purple-700 font-semibold text-sm flex items-center gap-2 mx-auto"
+          >
+            <svg
+              class="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewbox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              ></path>
+            </svg>
+            Kembali ke Halaman Absensi
+          </button>
+        </div>
+      </div>
+    </main>
+    <!-- Halaman Admin -->
+    <main id="page-admin" class="max-w-6xl mx-auto hidden">
+      <!-- Admin Header -->
+      <header class="glass-effect rounded-3xl card-shadow p-6 mb-6">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <div
+              class="w-16 h-16 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg"
+            >
+              <svg
+                class="w-10 h-10 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewbox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                ></path>
+              </svg>
+            </div>
+            <div>
+              <h1 class="text-3xl font-extrabold gradient-text">Panel Admin</h1>
+              <p class="text-gray-600 font-medium">
+                Kelola dan pantau data absensi
+              </p>
+            </div>
+          </div>
+          <button
+            id="logout-btn"
+            class="px-5 py-2 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center gap-2"
+          >
+            <svg
+              class="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewbox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+              ></path>
+            </svg>
+            Logout
+          </button>
+        </div>
+      </header>
+      <!-- Admin Tabs -->
+      <div class="glass-effect rounded-2xl card-shadow p-2 mb-6">
+        <div class="flex gap-2">
+          <button
+            id="tab-pengaturan"
+            class="admin-tab flex-1 px-6 py-3 rounded-xl font-bold transition-all bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-md"
+          >
+            ⚙️ Pengaturan Absen
+          </button>
+          <button
+            id="tab-dashboard"
+            class="admin-tab flex-1 px-6 py-3 rounded-xl font-bold transition-all bg-white text-gray-700 hover:bg-gray-50"
+          >
+            📊 Dashboard
+          </button>
+          <button
+            id="tab-harian"
+            class="admin-tab flex-1 px-6 py-3 rounded-xl font-bold transition-all bg-white text-gray-700 hover:bg-gray-50"
+          >
+            📅 Rekapan Harian
+          </button>
+          <button
+            id="tab-bulanan"
+            class="admin-tab flex-1 px-6 py-3 rounded-xl font-bold transition-all bg-white text-gray-700 hover:bg-gray-50"
+          >
+            📆 Rekapan Bulanan
+          </button>
+        </div>
+      </div>
+      <!-- Pengaturan Absen Content -->
+      <div id="content-pengaturan" class="admin-content">
+        <div class="glass-effect rounded-2xl card-shadow p-8 mb-6">
+          <h3
+            class="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3"
+          >
+            <svg
+              class="w-8 h-8 text-purple-600"
+              fill="none"
+              stroke="currentColor"
+              viewbox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              ></path>
+            </svg>
+            Pengaturan Waktu Absensi
+          </h3>
+          <div class="space-y-6">
+            <!-- Status Absen Toggle -->
+            <div
+              class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border-2 border-blue-200"
+            >
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                  <div
+                    class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center"
+                  >
+                    <svg
+                      class="w-8 h-8 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewbox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      ></path>
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 class="text-xl font-bold text-gray-800">
+                      Status Absensi
+                    </h4>
+                    <p class="text-sm text-gray-600 mt-1">
+                      Buka atau tutup sistem absensi secara manual
+                    </p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-4">
+                  <span id="status-text" class="text-lg font-bold text-gray-700"
+                    >Tutup</span
+                  >
+                  <div id="toggle-status" class="toggle-switch">
+                    <div class="toggle-slider"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Pengaturan Jam -->
+            <div
+              class="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-6 border-2 border-green-200"
+            >
+              <h4
+                class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2"
+              >
+                <svg
+                  class="w-6 h-6 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewbox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  ></path>
+                </svg>
+                Jam Operasional Absensi
+              </h4>
+              <p class="text-sm text-gray-600 mb-4">
+                Sistem akan otomatis membuka dan menutup absensi sesuai waktu
+                yang ditentukan
+              </p>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label
+                    for="jam-buka"
+                    class="block text-sm font-bold text-gray-700 mb-2"
+                  >
+                    🌅 Jam Buka Absensi
+                  </label>
+                  <input
+                    type="time"
+                    id="jam-buka"
+                    class="input-modern w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none bg-white font-semibold text-lg"
+                  />
+                </div>
+                <div>
+                  <label
+                    for="jam-tutup"
+                    class="block text-sm font-bold text-gray-700 mb-2"
+                  >
+                    🌆 Jam Tutup Absensi
+                  </label>
+                  <input
+                    type="time"
+                    id="jam-tutup"
+                    class="input-modern w-full px-5 py-4 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none bg-white font-semibold text-lg"
+                  />
+                </div>
+              </div>
+              <button
+                id="btn-simpan-waktu"
+                class="mt-6 w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold py-4 px-6 rounded-xl shadow-lg flex items-center justify-center gap-2 transition-all"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewbox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                  ></path>
+                </svg>
+                Simpan Pengaturan Waktu
+              </button>
+            </div>
+            <!-- Info Pengaturan Saat Ini -->
+            <div
+              id="info-pengaturan"
+              class="bg-gradient-to-r from-yellow-50 to-orange-50 rounded-xl p-6 border-2 border-yellow-200"
+            >
+              <h4
+                class="text-lg font-bold text-gray-800 mb-3 flex items-center gap-2"
+              >
+                <svg
+                  class="w-6 h-6 text-yellow-600"
+                  fill="currentColor"
+                  viewbox="0 0 20 20"
+                >
+                  <path
+                    fill-rule="evenodd"
+                    d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                    clip-rule="evenodd"
+                  ></path>
+                </svg>
+                Pengaturan Saat Ini
+              </h4>
+              <div class="space-y-2 text-sm">
+                <p class="text-gray-700">
+                  <span class="font-bold">Status:</span>
+                  <span id="current-status">-</span>
+                </p>
+                <p class="text-gray-700">
+                  <span class="font-bold">Jam Buka:</span>
+                  <span id="current-jam-buka">Belum diatur</span>
+                </p>
+                <p class="text-gray-700">
+                  <span class="font-bold">Jam Tutup:</span>
+                  <span id="current-jam-tutup">Belum diatur</span>
+                </p>
+              </div>
+            </div>
+            <!-- Success/Error Messages -->
+            <div
+              id="settings-success"
+              class="hidden p-4 bg-gradient-to-r from-green-50 to-green-100 border-l-4 border-green-500 text-green-800 rounded-xl flex items-center gap-3 shadow-sm"
+            >
+              <svg
+                class="w-6 h-6 text-green-600"
+                fill="currentColor"
+                viewbox="0 0 20 20"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clip-rule="evenodd"
+                ></path></svg
+              ><span class="font-semibold">Pengaturan berhasil disimpan!</span>
+            </div>
+            <div
+              id="settings-error"
+              class="hidden p-4 bg-gradient-to-r from-red-50 to-red-100 border-l-4 border-red-500 text-red-800 rounded-xl flex items-center gap-3 shadow-sm"
+            >
+              <svg
+                class="w-6 h-6 text-red-600"
+                fill="currentColor"
+                viewbox="0 0 20 20"
+              >
+                <path
+                  fill-rule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                  clip-rule="evenodd"
+                ></path></svg
+              ><span class="font-semibold"
+                >Gagal menyimpan pengaturan. Silakan coba lagi.</span
+              >
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Dashboard Content -->
+      <div id="content-dashboard" class="admin-content hidden">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          <!-- Card Total Absensi -->
+          <div class="glass-effect rounded-2xl card-shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div
+                class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center"
+              >
+                <svg
+                  class="w-7 h-7 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewbox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+            <h3 class="text-gray-600 text-sm font-semibold mb-1">
+              Total Absensi
+            </h3>
+            <p id="stat-total" class="text-4xl font-extrabold text-gray-800">
+              0
+            </p>
+          </div>
+          <!-- Card Hadir Hari Ini -->
+          <div class="glass-effect rounded-2xl card-shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div
+                class="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center"
+              >
+                <svg
+                  class="w-7 h-7 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewbox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+            <h3 class="text-gray-600 text-sm font-semibold mb-1">
+              Hadir Hari Ini
+            </h3>
+            <p id="stat-hadir" class="text-4xl font-extrabold text-green-600">
+              0
+            </p>
+          </div>
+          <!-- Card Tidak Hadir Hari Ini -->
+          <div class="glass-effect rounded-2xl card-shadow p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div
+                class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center"
+              >
+                <svg
+                  class="w-7 h-7 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewbox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  ></path>
+                </svg>
+              </div>
+            </div>
+            <h3 class="text-gray-600 text-sm font-semibold mb-1">
+              Tidak Hadir Hari Ini
+            </h3>
+            <p
+              id="stat-tidak-hadir"
+              class="text-4xl font-extrabold text-red-600"
+            >
+              0
+            </p>
+          </div>
+        </div>
+        <!-- Grafik Status Hari Ini -->
+        <div class="glass-effect rounded-2xl card-shadow p-6">
+          <h3 class="text-xl font-bold text-gray-800 mb-4">
+            Status Kehadiran Hari Ini
+          </h3>
+          <div id="chart-status" class="space-y-3">
+            <p class="text-gray-500 text-center py-8">Belum ada data</p>
+          </div>
+        </div>
+      </div>
+      <!-- Rekapan Harian Content -->
+      <div id="content-harian" class="admin-content hidden">
+        <div class="glass-effect rounded-2xl card-shadow p-6 mb-6">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-2xl font-bold text-gray-800">Rekapan Harian</h3>
+            <div class="flex gap-3">
+              <input
+                type="date"
+                id="filter-tanggal"
+                class="px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none bg-white font-semibold"
+              />
+              <button
+                id="btn-export-harian"
+                class="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold rounded-xl hover:shadow-lg transition-all flex items-center gap-2"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewbox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  ></path>
+                </svg>
+                Export PDF
+              </button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse" id="table-harian">
+              <thead>
+                <tr
+                  class="bg-gradient-to-r from-purple-600 to-purple-700 text-white"
+                >
+                  <th
+                    class="border-2 border-purple-400 px-4 py-3 text-sm font-bold text-left"
+                  >
+                    No
+                  </th>
+                  <th
+                    class="border-2 border-purple-400 px-4 py-3 text-sm font-bold text-left"
+                  >
+                    Nama Lengkap
+                  </th>
+                  <th
+                    class="border-2 border-purple-400 px-4 py-3 text-sm font-bold text-left"
+                  >
+                    Jabatan
+                  </th>
+                  <th
+                    class="border-2 border-purple-400 px-4 py-3 text-sm font-bold text-center"
+                  >
+                    Status Kehadiran
+                  </th>
+                  <th
+                    class="border-2 border-purple-400 px-4 py-3 text-sm font-bold text-center"
+                  >
+                    Waktu Absen
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="tbody-harian">
+                <tr>
+                  <td
+                    colspan="5"
+                    class="border-2 border-gray-300 px-4 py-8 text-center text-gray-500"
+                  >
+                    Belum ada data untuk tanggal ini
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- Summary Statistics -->
+          <div class="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div
+              class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4 border-2 border-green-200"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-2xl">✅</span>
+                <span class="text-sm font-semibold text-green-800">Hadir</span>
+              </div>
+              <p
+                id="summary-hadir"
+                class="text-3xl font-extrabold text-green-700"
+              >
+                0
+              </p>
+            </div>
+            <div
+              class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-4 border-2 border-yellow-200"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-2xl">🏥</span>
+                <span class="text-sm font-semibold text-yellow-800">Sakit</span>
+              </div>
+              <p
+                id="summary-sakit"
+                class="text-3xl font-extrabold text-yellow-700"
+              >
+                0
+              </p>
+            </div>
+            <div
+              class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border-2 border-blue-200"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-2xl">📝</span>
+                <span class="text-sm font-semibold text-blue-800">Izin</span>
+              </div>
+              <p
+                id="summary-izin"
+                class="text-3xl font-extrabold text-blue-700"
+              >
+                0
+              </p>
+            </div>
+            <div
+              class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border-2 border-purple-200"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-2xl">🏖️</span>
+                <span class="text-sm font-semibold text-purple-800">Cuti</span>
+              </div>
+              <p
+                id="summary-cuti"
+                class="text-3xl font-extrabold text-purple-700"
+              >
+                0
+              </p>
+            </div>
+            <div
+              class="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 border-2 border-red-200"
+            >
+              <div class="flex items-center gap-2 mb-2">
+                <span class="text-2xl">❌</span>
+                <span class="text-sm font-semibold text-red-800">Alpa</span>
+              </div>
+              <p id="summary-alpa" class="text-3xl font-extrabold text-red-700">
+                0
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Rekapan Bulanan Content -->
+      <div id="content-bulanan" class="admin-content hidden">
+        <div class="glass-effect rounded-2xl card-shadow p-6 mb-6">
+          <div class="flex items-center justify-between mb-6">
+            <h3 class="text-2xl font-bold text-gray-800">Rekapan Bulanan</h3>
+            <div class="flex gap-3">
+              <select
+                id="filter-bulan"
+                class="px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none bg-white font-semibold"
+              >
+                <option value="0">Januari</option>
+                <option value="1">Februari</option>
+                <option value="2">Maret</option>
+                <option value="3">April</option>
+                <option value="4">Mei</option>
+                <option value="5">Juni</option>
+                <option value="6">Juli</option>
+                <option value="7">Agustus</option>
+                <option value="8">September</option>
+                <option value="9">Oktober</option>
+                <option value="10">November</option>
+                <option value="11">Desember</option>
+              </select>
+              <select
+                id="filter-tahun"
+                class="px-4 py-2 border-2 border-gray-200 rounded-xl focus:border-purple-500 focus:outline-none bg-white font-semibold"
+              ></select>
+              <button
+                id="btn-export-bulanan"
+                class="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white font-bold rounded-xl hover:shadow-lg transition-all flex items-center gap-2"
+              >
+                <svg
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewbox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  ></path>
+                </svg>
+                Export PDF
+              </button>
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full border-collapse" id="table-bulanan">
+              <thead>
+                <tr
+                  class="bg-gradient-to-r from-purple-600 to-purple-700 text-white"
+                >
+                  <th
+                    class="border-2 border-purple-400 px-3 py-3 text-sm font-bold"
+                    rowspan="2"
+                  >
+                    Jabatan
+                  </th>
+                  <th
+                    class="border-2 border-purple-400 px-3 py-3 text-sm font-bold"
+                    rowspan="2"
+                  >
+                    Nama
+                  </th>
+                  <th
+                    class="border-2 border-purple-400 px-2 py-3 text-xs font-bold text-center"
+                    colspan="31"
+                  >
+                    Tanggal
+                  </th>
+                  <th
+                    class="border-2 border-purple-400 px-3 py-3 text-sm font-bold text-center"
+                    colspan="3"
+                  >
+                    Keterangan
+                  </th>
+                  <th
+                    class="border-2 border-purple-400 px-3 py-3 text-sm font-bold"
+                    rowspan="2"
+                  >
+                    JML
+                  </th>
+                </tr>
+                <tr
+                  class="bg-gradient-to-r from-purple-500 to-purple-600 text-white"
+                >
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    1
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    2
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    3
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    4
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    5
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    6
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    7
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    8
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    9
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    10
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    11
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    12
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    13
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    14
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    15
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    16
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    17
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    18
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    19
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    20
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    21
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    22
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    23
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    24
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    25
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    26
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    27
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    28
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    29
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    30
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-1 py-2 text-xs font-bold"
+                  >
+                    31
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-2 py-2 text-xs font-bold bg-yellow-500"
+                  >
+                    S
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-2 py-2 text-xs font-bold bg-blue-500"
+                  >
+                    I
+                  </th>
+                  <th
+                    class="border-2 border-purple-300 px-2 py-2 text-xs font-bold bg-red-500"
+                  >
+                    A
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="tbody-bulanan">
+                <tr>
+                  <td
+                    colspan="37"
+                    class="border-2 border-gray-300 px-4 py-8 text-center text-gray-500"
+                  >
+                    Belum ada data untuk bulan ini
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div
+            class="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl"
+          >
+            <h4 class="font-bold text-gray-800 mb-2">Keterangan:</h4>
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
+              <div class="flex items-center gap-2">
+                <span
+                  class="w-8 h-8 bg-green-500 text-white rounded-lg flex items-center justify-center font-bold"
+                  >H</span
+                >
+                <span class="text-gray-700">Hadir</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span
+                  class="w-8 h-8 bg-yellow-500 text-white rounded-lg flex items-center justify-center font-bold"
+                  >S</span
+                >
+                <span class="text-gray-700">Sakit</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span
+                  class="w-8 h-8 bg-blue-500 text-white rounded-lg flex items-center justify-center font-bold"
+                  >I</span
+                >
+                <span class="text-gray-700">Izin</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span
+                  class="w-8 h-8 bg-red-500 text-white rounded-lg flex items-center justify-center font-bold"
+                  >A</span
+                >
+                <span class="text-gray-700">Alpa</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span
+                  class="w-8 h-8 bg-purple-500 text-white rounded-lg flex items-center justify-center font-bold"
+                  >C</span
+                >
+                <span class="text-gray-700">Cuti</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script>
+      const defaultConfig = {
+        judul_aplikasi: "Absensi Perangkat Desa",
+        nama_desa: "Desa Contoh",
+        primary_color: "#16a34a",
+        secondary_color: "#ffffff",
+        text_color: "#1f2937",
+        accent_color: "#2563eb",
+        surface_color: "#f9fafb",
+        font_family: "system-ui",
+        font_size: 16,
+      };
+
+      let allAttendanceData = [];
+      let attendanceSettings = null;
+      let isSubmitting = false;
+      let checkIntervalId = null;
+
+      // Update Clock
+      function updateClock() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString("id-ID", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+        const dateString = now.toLocaleDateString("id-ID", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        document.getElementById("current-time").textContent = timeString;
+        document.getElementById("current-date").textContent = dateString;
+      }
+
+      updateClock();
+      setInterval(updateClock, 1000);
+
+      // Check Attendance Status
+      function checkAttendanceStatus() {
+        if (!attendanceSettings) return;
+
+        const now = new Date();
+        const currentTime = now.getHours() * 60 + now.getMinutes();
+
+        if (attendanceSettings.jam_buka && attendanceSettings.jam_tutup) {
+          const [bukaHour, bukaMin] = attendanceSettings.jam_buka
+            .split(":")
+            .map(Number);
+          const [tutupHour, tutupMin] = attendanceSettings.jam_tutup
+            .split(":")
+            .map(Number);
+
+          const bukaTime = bukaHour * 60 + bukaMin;
+          const tutupTime = tutupHour * 60 + tutupMin;
+
+          const shouldBeOpen =
+            currentTime >= bukaTime && currentTime < tutupTime;
+
+          if (shouldBeOpen && attendanceSettings.status_absen === "tutup") {
+            updateAttendanceStatus("buka", true);
+          } else if (
+            !shouldBeOpen &&
+            attendanceSettings.status_absen === "buka"
+          ) {
+            updateAttendanceStatus("tutup", true);
+          }
+        }
+
+        updateStatusDisplay();
+      }
+
+      // Update Status Display
+      function updateStatusDisplay() {
+        const statusContainer = document.getElementById(
+          "status-absen-container"
+        );
+        const formSection = document.getElementById("form-section");
+
+        if (
+          !attendanceSettings ||
+          attendanceSettings.status_absen === "tutup"
+        ) {
+          statusContainer.innerHTML = `
+          <div class="bg-gradient-to-r from-red-50 to-red-100 rounded-2xl p-6 text-center border-2 border-red-300">
+            <div class="flex items-center justify-center gap-3 mb-2">
+              <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+              </svg>
+              <h3 class="text-2xl font-extrabold text-red-800">Absensi Ditutup</h3>
+            </div>
+            <p class="text-red-700 font-medium">Sistem absensi saat ini tidak menerima data absensi</p>
+            ${
+              attendanceSettings &&
+              attendanceSettings.jam_buka &&
+              attendanceSettings.jam_tutup
+                ? `<p class="text-red-600 text-sm mt-2">Jam operasional: ${attendanceSettings.jam_buka} - ${attendanceSettings.jam_tutup}</p>`
+                : ""
+            }
+          </div>
+        `;
+          formSection.style.opacity = "0.5";
+          formSection.style.pointerEvents = "none";
+        } else {
+          statusContainer.innerHTML = `
+          <div class="bg-gradient-to-r from-green-50 to-green-100 rounded-2xl p-6 text-center border-2 border-green-300">
+            <div class="flex items-center justify-center gap-3 mb-2">
+              <svg class="w-8 h-8 text-green-600 pulse-animation" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <h3 class="text-2xl font-extrabold text-green-800">Absensi Dibuka</h3>
+            </div>
+            <p class="text-green-700 font-medium">Silakan isi form absensi di bawah ini</p>
+            ${
+              attendanceSettings.jam_buka && attendanceSettings.jam_tutup
+                ? `<p class="text-green-600 text-sm mt-2">Jam operasional: ${attendanceSettings.jam_buka} - ${attendanceSettings.jam_tutup}</p>`
+                : ""
+            }
+          </div>
+        `;
+          formSection.style.opacity = "1";
+          formSection.style.pointerEvents = "auto";
+        }
+      }
+
+      // Update Attendance Status
+      async function updateAttendanceStatus(status, isAutomatic = false) {
+        // Simpan status lama untuk pengembalian jika gagal
+        const oldStatus = attendanceSettings?.status_absen || "tutup";
+
+        // Update variabel lokal dan UI SEGERA
+        if (!attendanceSettings) {
+          // Kasus ini terjadi jika toggle diklik sebelum ada pengaturan disimpan
+          attendanceSettings = {
+            type: "settings",
+            status_absen: status,
+            jam_buka: "", // Status default jika belum diatur
+            jam_tutup: "",
+          };
+        } else {
+          // Update status tanpa menyentuh jam_buka dan jam_tutup
+          attendanceSettings.status_absen = status;
+        }
+
+        updateStatusDisplay();
+        if (!isAutomatic) {
+          updateAdminSettingsDisplay();
+        }
+
+        // Kirim perintah ke dataSdk
+        // Asumsi dataSdk.update akan mengganti entri dengan type: 'settings' jika sudah ada.
+        const result = await window.dataSdk.update(attendanceSettings);
+
+        // Jika dataSdk gagal, kembalikan status lama
+        if (!result.isOk) {
+          console.error("Gagal memperbarui status absensi:", result.error);
+          attendanceSettings.status_absen = oldStatus; // Kembalikan hanya status
+          updateStatusDisplay();
+          if (!isAutomatic) {
+            updateAdminSettingsDisplay();
+          }
+        }
+        // Jika berhasil, dataHandler.onDataChanged akan memperbarui nanti jika diperlukan
+      }
+
+      // Data Handler
+      const dataHandler = {
+        onDataChanged(data) {
+          const settings = data.find((item) => item.type === "settings");
+          const attendance = data.filter((item) => item.type !== "settings");
+
+          attendanceSettings = settings || null;
+          allAttendanceData = attendance;
+
+          renderAttendanceList(attendance);
+          updateStatusDisplay();
+          updateAdminSettingsDisplay();
+        },
+      };
+
+      // Render Attendance List
+      function renderAttendanceList(data) {
+        const listContainer = document.getElementById("attendance-list");
+
+        if (data.length === 0) {
+          listContainer.innerHTML = `
+          <div class="text-center py-16">
+            <svg class="w-20 h-20 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <p class="text-gray-400 text-lg font-medium">Belum ada data absensi hari ini</p>
+          </div>
+        `;
+          return;
+        }
+
+        const today = new Date().toLocaleDateString("id-ID");
+        const todayData = data
+          .filter((item) => {
+            const itemDate = new Date(item.waktu_absen).toLocaleDateString(
+              "id-ID"
+            );
+            return itemDate === today;
+          })
+          .sort((a, b) => new Date(b.waktu_absen) - new Date(a.waktu_absen));
+
+        if (todayData.length === 0) {
+          listContainer.innerHTML = `
+          <div class="text-center py-16">
+            <svg class="w-20 h-20 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <p class="text-gray-400 text-lg font-medium">Belum ada data absensi hari ini</p>
+          </div>
+        `;
+          return;
+        }
+
+        listContainer.innerHTML = todayData
+          .map((item) => {
+            const time = new Date(item.waktu_absen).toLocaleTimeString(
+              "id-ID",
+              {
+                hour: "2-digit",
+                minute: "2-digit",
+              }
+            );
+
+            const statusConfig = {
+              Hadir: {
+                bg: "bg-gradient-to-r from-green-50 to-green-100",
+                text: "text-green-800",
+                border: "border-green-300",
+                icon: "✅",
+              },
+              Izin: {
+                bg: "bg-gradient-to-r from-blue-50 to-blue-100",
+                text: "text-blue-800",
+                border: "border-blue-300",
+                icon: "📝",
+              },
+              Sakit: {
+                bg: "bg-gradient-to-r from-yellow-50 to-yellow-100",
+                text: "text-yellow-800",
+                border: "border-yellow-300",
+                icon: "🏥",
+              },
+              Cuti: {
+                bg: "bg-gradient-to-r from-purple-50 to-purple-100",
+                text: "text-purple-800",
+                border: "border-purple-300",
+                icon: "🏖️",
+              },
+              Alpa: {
+                bg: "bg-gradient-to-r from-red-50 to-red-100",
+                text: "text-red-800",
+                border: "border-red-300",
+                icon: "❌",
+              },
+            };
+
+            const status =
+              statusConfig[item.status_kehadiran] || statusConfig["Hadir"];
+
+            return `
+          <div class="attendance-card bg-white border-2 border-gray-100 rounded-2xl p-5 flex justify-between items-center shadow-sm hover:shadow-lg">
+            <div class="flex items-center gap-4 flex-1">
+              <div class="w-14 h-14 bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl flex items-center justify-center text-2xl">
+                👤
+              </div>
+              <div class="flex-1">
+                <h3 class="font-bold text-xl text-gray-800 mb-1">${item.nama_lengkap}</h3>
+                <p class="text-sm text-gray-600 font-medium mb-1">${item.jabatan}</p>
+                <div class="flex items-center gap-2 text-xs text-gray-500">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+                  </svg>
+                  <span class="font-medium">${time}</span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <span class="status-badge px-5 py-3 rounded-xl text-sm font-bold border-2 ${status.bg} ${status.text} ${status.border} flex items-center gap-2 shadow-sm">
+                <span class="text-lg">${status.icon}</span>
+                ${item.status_kehadiran}
+              </span>
+            </div>
+          </div>
+        `;
+          })
+          .join("");
+      }
+
+      // Form Submit Handler
+      document
+        .getElementById("attendance-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          if (isSubmitting) return;
+
+          if (
+            !attendanceSettings ||
+            attendanceSettings.status_absen === "tutup"
+          ) {
+            const errorMsg = document.getElementById("error-message");
+            errorMsg.querySelector("span").textContent =
+              "Absensi sedang ditutup. Tidak dapat mengirim data.";
+            errorMsg.classList.remove("hidden");
+            setTimeout(() => errorMsg.classList.add("hidden"), 3000);
+            return;
+          }
+
+          const successMsg = document.getElementById("success-message");
+          const errorMsg = document.getElementById("error-message");
+          const limitWarning = document.getElementById("limit-warning");
+          const submitBtn = document.getElementById("submit-btn");
+
+          successMsg.classList.add("hidden");
+          errorMsg.classList.add("hidden");
+          limitWarning.classList.add("hidden");
+
+          if (allAttendanceData.length >= 999) {
+            limitWarning.classList.remove("hidden");
+            return;
+          }
+
+          const namaLengkap = document
+            .getElementById("nama-lengkap")
+            .value.trim();
+
+          // Cek apakah nama sudah absen hari ini
+          const today = new Date().toLocaleDateString("id-ID");
+          const sudahAbsen = allAttendanceData.some((item) => {
+            const itemDate = new Date(item.waktu_absen).toLocaleDateString(
+              "id-ID"
+            );
+            return (
+              item.nama_lengkap.toLowerCase() === namaLengkap.toLowerCase() &&
+              itemDate === today
+            );
+          });
+
+          if (sudahAbsen) {
+            errorMsg.querySelector("span").textContent =
+              "Anda sudah melakukan absensi hari ini. Setiap orang hanya bisa absen 1 kali per hari.";
+            errorMsg.classList.remove("hidden");
+            setTimeout(() => errorMsg.classList.add("hidden"), 5000);
+            return;
+          }
+
+          isSubmitting = true;
+          submitBtn.disabled = true;
+          submitBtn.innerHTML =
+            '<svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg><span>Mengirim...</span>';
+
+          const formData = {
+            type: "attendance",
+            nama_lengkap: namaLengkap,
+            jabatan: document.getElementById("jabatan").value,
+            status_kehadiran: document.getElementById("status-kehadiran").value,
+            waktu_absen: new Date().toISOString(),
+          };
+
+          const result = await window.dataSdk.create(formData);
+
+          isSubmitting = false;
+          submitBtn.disabled = false;
+          submitBtn.innerHTML =
+            '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>Kirim Absensi';
+
+          if (result.isOk) {
+            successMsg.classList.remove("hidden");
+            document.getElementById("attendance-form").reset();
+            setTimeout(() => {
+              successMsg.classList.add("hidden");
+            }, 3000);
+          } else {
+            errorMsg.querySelector("span").textContent =
+              "Gagal menyimpan absensi. Silakan coba lagi.";
+            errorMsg.classList.remove("hidden");
+          }
+        });
+
+      // Admin Functions
+      function updateAdminSettingsDisplay() {
+        if (attendanceSettings) {
+          document.getElementById("current-status").textContent =
+            attendanceSettings.status_absen === "buka" ? "🟢 Buka" : "🔴 Tutup";
+          document.getElementById("current-jam-buka").textContent =
+            attendanceSettings.jam_buka || "Belum diatur";
+          document.getElementById("current-jam-tutup").textContent =
+            attendanceSettings.jam_tutup || "Belum diatur";
+
+          document.getElementById("jam-buka").value =
+            attendanceSettings.jam_buka || "";
+          document.getElementById("jam-tutup").value =
+            attendanceSettings.jam_tutup || "";
+
+          const toggle = document.getElementById("toggle-status");
+          const statusText = document.getElementById("status-text");
+
+          if (attendanceSettings.status_absen === "buka") {
+            toggle.classList.add("active");
+            statusText.textContent = "Buka";
+            statusText.classList.remove("text-gray-700");
+            statusText.classList.add("text-green-600");
+          } else {
+            toggle.classList.remove("active");
+            statusText.textContent = "Tutup";
+            statusText.classList.remove("text-green-600");
+            statusText.classList.add("text-gray-700");
+          }
+        } else {
+          document.getElementById("current-status").textContent = "🔴 Tutup";
+          document.getElementById("current-jam-buka").textContent =
+            "Belum diatur";
+          document.getElementById("current-jam-tutup").textContent =
+            "Belum diatur";
+        }
+      }
+
+      // Toggle Status Handler
+      document
+        .getElementById("toggle-status")
+        .addEventListener("click", async () => {
+          const currentStatus = attendanceSettings
+            ? attendanceSettings.status_absen
+            : "tutup";
+          const newStatus = currentStatus === "buka" ? "tutup" : "buka";
+          await updateAttendanceStatus(newStatus);
+        });
+
+      // Save Time Settings
+      document
+        .getElementById("btn-simpan-waktu")
+        .addEventListener("click", async () => {
+          const jamBuka = document.getElementById("jam-buka").value;
+          const jamTutup = document.getElementById("jam-tutup").value;
+
+          const successMsg = document.getElementById("settings-success");
+          const errorMsg = document.getElementById("settings-error");
+
+          successMsg.classList.add("hidden");
+          errorMsg.classList.add("hidden");
+
+          if (!jamBuka || !jamTutup) {
+            errorMsg.querySelector("span").textContent =
+              "Mohon isi jam buka dan jam tutup.";
+            errorMsg.classList.remove("hidden");
+            setTimeout(() => errorMsg.classList.add("hidden"), 3000);
+            return;
+          }
+
+          if (jamBuka >= jamTutup) {
+            errorMsg.querySelector("span").textContent =
+              "Jam tutup harus lebih besar dari jam buka.";
+            errorMsg.classList.remove("hidden");
+            setTimeout(() => errorMsg.classList.add("hidden"), 3000);
+            return;
+          }
+
+          if (!attendanceSettings) {
+            const newSettings = {
+              type: "settings",
+              status_absen: "buka",
+              jam_buka: jamBuka,
+              jam_tutup: jamTutup,
+            };
+
+            const result = await window.dataSdk.create(newSettings);
+            if (result.isOk) {
+              successMsg.classList.remove("hidden");
+              setTimeout(() => successMsg.classList.add("hidden"), 3000);
+              // Jika berhasil dibuat, variabel attendanceSettings akan diperbarui oleh onDataChanged
+              // Tapi kita tetap update UI berdasarkan apa yang kita kirimkan untuk respons cepat
+              attendanceSettings = newSettings;
+              updateStatusDisplay();
+              updateAdminSettingsDisplay();
+            } else {
+              errorMsg.classList.remove("hidden");
+            }
+          } else {
+            // --- Bagian Baru: Update UI segera sebelum menyimpan ke SDK ---
+            const oldStatus = attendanceSettings.status_absen;
+            const oldJamBuka = attendanceSettings.jam_buka;
+            const oldJamTutup = attendanceSettings.jam_tutup;
+
+            // Update variabel lokal ke status baru
+            attendanceSettings.status_absen = "buka";
+            attendanceSettings.jam_buka = jamBuka;
+            attendanceSettings.jam_tutup = jamTutup;
+
+            // Update UI segera
+            updateStatusDisplay();
+            updateAdminSettingsDisplay();
+
+            // Panggil dataSdk
+            const updatedSettingsForSdk = {
+              ...attendanceSettings, // Kirim seluruh objek
+            };
+
+            const result = await window.dataSdk.update(updatedSettingsForSdk);
+            if (result.isOk) {
+              successMsg.classList.remove("hidden");
+              setTimeout(() => successMsg.classList.add("hidden"), 3000);
+              // onDataChanged akan memperbarui kembali jika diperlukan
+            } else {
+              errorMsg.classList.remove("hidden");
+              // Kembalikan ke status lama jika gagal
+              attendanceSettings.status_absen = oldStatus;
+              attendanceSettings.jam_buka = oldJamBuka;
+              attendanceSettings.jam_tutup = oldJamTutup;
+              updateStatusDisplay();
+              updateAdminSettingsDisplay();
+            }
+            // --- Akhir Bagian Baru ---
+          }
+        });
+
+      // Config Change Handler
+      async function onConfigChange(config) {
+        const customFont = config.font_family || defaultConfig.font_family;
+        const baseFontStack = "system-ui, -apple-system, sans-serif";
+        const baseSize = config.font_size || defaultConfig.font_size;
+
+        document.body.style.fontFamily = `${customFont}, ${baseFontStack}`;
+        document.body.style.background = `linear-gradient(to bottom right, ${
+          config.surface_color || defaultConfig.surface_color
+        }, ${config.accent_color || defaultConfig.accent_color}20)`;
+
+        const appTitle = document.getElementById("app-title");
+        appTitle.textContent =
+          config.judul_aplikasi || defaultConfig.judul_aplikasi;
+        appTitle.style.color =
+          config.primary_color || defaultConfig.primary_color;
+        appTitle.style.fontSize = `${baseSize * 1.875}px`;
+
+        const villageName = document.getElementById("village-name");
+        villageName.textContent = config.nama_desa || defaultConfig.nama_desa;
+        villageName.style.fontSize = `${baseSize}px`;
+        villageName.style.color = config.text_color || defaultConfig.text_color;
+
+        const currentTime = document.getElementById("current-time");
+        currentTime.style.color =
+          config.accent_color || defaultConfig.accent_color;
+        currentTime.style.fontSize = `${baseSize * 2.5}px`;
+
+        const currentDate = document.getElementById("current-date");
+        currentDate.style.fontSize = `${baseSize * 1.125}px`;
+
+        const submitBtn = document.getElementById("submit-btn");
+        submitBtn.style.backgroundColor =
+          config.primary_color || defaultConfig.primary_color;
+
+        const allLabels = document.querySelectorAll("label");
+        allLabels.forEach((label) => {
+          label.style.fontSize = `${baseSize * 0.875}px`;
+        });
+
+        const allInputs = document.querySelectorAll("input, select");
+        allInputs.forEach((input) => {
+          input.style.fontSize = `${baseSize}px`;
+        });
+      }
+
+      // Element SDK Implementation
+      if (window.elementSdk) {
+        window.elementSdk.init({
+          defaultConfig,
+          onConfigChange,
+          mapToCapabilities: (config) => ({
+            recolorables: [
+              {
+                get: () => config.primary_color || defaultConfig.primary_color,
+                set: (value) => {
+                  config.primary_color = value;
+                  window.elementSdk.setConfig({ primary_color: value });
+                },
+              },
+              {
+                get: () =>
+                  config.secondary_color || defaultConfig.secondary_color,
+                set: (value) => {
+                  config.secondary_color = value;
+                  window.elementSdk.setConfig({ secondary_color: value });
+                },
+              },
+              {
+                get: () => config.text_color || defaultConfig.text_color,
+                set: (value) => {
+                  config.text_color = value;
+                  window.elementSdk.setConfig({ text_color: value });
+                },
+              },
+              {
+                get: () => config.accent_color || defaultConfig.accent_color,
+                set: (value) => {
+                  config.accent_color = value;
+                  window.elementSdk.setConfig({ accent_color: value });
+                },
+              },
+              {
+                get: () => config.surface_color || defaultConfig.surface_color,
+                set: (value) => {
+                  config.surface_color = value;
+                  window.elementSdk.setConfig({ surface_color: value });
+                },
+              },
+            ],
+            borderables: [],
+            fontEditable: {
+              get: () => config.font_family || defaultConfig.font_family,
+              set: (value) => {
+                config.font_family = value;
+                window.elementSdk.setConfig({ font_family: value });
+              },
+            },
+            fontSizeable: {
+              get: () => config.font_size || defaultConfig.font_size,
+              set: (value) => {
+                config.font_size = value;
+                window.elementSdk.setConfig({ font_size: value });
+              },
+            },
+          }),
+          mapToEditPanelValues: (config) =>
+            new Map([
+              [
+                "judul_aplikasi",
+                config.judul_aplikasi || defaultConfig.judul_aplikasi,
+              ],
+              ["nama_desa", config.nama_desa || defaultConfig.nama_desa],
+            ]),
+        });
+      }
+
+      // Admin Authentication
+      const ADMIN_PASSWORD = "admin123";
+      let isAdminLoggedIn = false;
+
+      // Login Form Handler
+      document.getElementById("login-form").addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        const password = document.getElementById("admin-password").value;
+        const errorMsg = document.getElementById("login-error");
+
+        if (password === ADMIN_PASSWORD) {
+          isAdminLoggedIn = true;
+          errorMsg.classList.add("hidden");
+          document.getElementById("admin-password").value = "";
+          showPage("admin");
+          showAdminTab("pengaturan");
+          updateAdminSettingsDisplay();
+
+          if (!checkIntervalId) {
+            checkIntervalId = setInterval(checkAttendanceStatus, 60000);
+          }
+        } else {
+          errorMsg.classList.remove("hidden");
+          document.getElementById("admin-password").value = "";
+          document.getElementById("admin-password").focus();
+        }
+      });
+
+      // Logout Handler
+      document.getElementById("logout-btn").addEventListener("click", () => {
+        isAdminLoggedIn = false;
+        if (checkIntervalId) {
+          clearInterval(checkIntervalId);
+          checkIntervalId = null;
+        }
+        showPage("absensi");
+      });
+
+      // Back to Absensi from Login
+      document
+        .getElementById("back-to-absensi")
+        .addEventListener("click", () => {
+          document.getElementById("admin-password").value = "";
+          document.getElementById("login-error").classList.add("hidden");
+          showPage("absensi");
+        });
+
+      // Navigation Functions
+      function showPage(pageName) {
+        document.getElementById("page-absensi").classList.add("hidden");
+        document.getElementById("page-admin").classList.add("hidden");
+        document.getElementById("page-login").classList.add("hidden");
+        document.getElementById(`page-${pageName}`).classList.remove("hidden");
+
+        document.querySelectorAll(".nav-btn").forEach((btn) => {
+          btn.classList.remove(
+            "bg-gradient-to-r",
+            "from-green-600",
+            "to-green-700",
+            "text-white",
+            "shadow-md"
+          );
+          btn.classList.add("bg-white", "text-gray-700");
+        });
+
+        if (pageName === "absensi") {
+          document
+            .getElementById("nav-absensi")
+            .classList.remove("bg-white", "text-gray-700");
+          document
+            .getElementById("nav-absensi")
+            .classList.add(
+              "bg-gradient-to-r",
+              "from-green-600",
+              "to-green-700",
+              "text-white",
+              "shadow-md"
+            );
+        } else if (pageName === "admin" || pageName === "login") {
+          document
+            .getElementById("nav-admin")
+            .classList.remove("bg-white", "text-gray-700");
+          document
+            .getElementById("nav-admin")
+            .classList.add(
+              "bg-gradient-to-r",
+              "from-green-600",
+              "to-green-700",
+              "text-white",
+              "shadow-md"
+            );
+        }
+      }
+
+      function showAdminTab(tabName) {
+        document.querySelectorAll(".admin-content").forEach((content) => {
+          content.classList.add("hidden");
+        });
+        document
+          .getElementById(`content-${tabName}`)
+          .classList.remove("hidden");
+
+        document.querySelectorAll(".admin-tab").forEach((btn) => {
+          btn.classList.remove(
+            "bg-gradient-to-r",
+            "from-purple-600",
+            "to-purple-700",
+            "text-white",
+            "shadow-md"
+          );
+          btn.classList.add("bg-white", "text-gray-700");
+        });
+
+        document
+          .getElementById(`tab-${tabName}`)
+          .classList.remove("bg-white", "text-gray-700");
+        document
+          .getElementById(`tab-${tabName}`)
+          .classList.add(
+            "bg-gradient-to-r",
+            "from-purple-600",
+            "to-purple-700",
+            "text-white",
+            "shadow-md"
+          );
+
+        if (tabName === "dashboard") {
+          updateDashboard();
+        } else if (tabName === "harian") {
+          renderRekapanHarian();
+        } else if (tabName === "bulanan") {
+          renderRekapanBulanan();
+        }
+      }
+
+      // Update Dashboard Statistics
+      function updateDashboard() {
+        const today = new Date().toLocaleDateString("id-ID");
+        const todayData = allAttendanceData.filter((item) => {
+          const itemDate = new Date(item.waktu_absen).toLocaleDateString(
+            "id-ID"
+          );
+          return itemDate === today;
+        });
+
+        const hadirCount = todayData.filter(
+          (item) => item.status_kehadiran === "Hadir"
+        ).length;
+        const tidakHadirCount = todayData.filter(
+          (item) => item.status_kehadiran !== "Hadir"
+        ).length;
+
+        document.getElementById("stat-total").textContent =
+          allAttendanceData.length;
+        document.getElementById("stat-hadir").textContent = hadirCount;
+        document.getElementById("stat-tidak-hadir").textContent =
+          tidakHadirCount;
+
+        const statusCount = {
+          Hadir: 0,
+          Izin: 0,
+          Sakit: 0,
+          Cuti: 0,
+          Alpa: 0,
+        };
+
+        todayData.forEach((item) => {
+          if (statusCount.hasOwnProperty(item.status_kehadiran)) {
+            statusCount[item.status_kehadiran]++;
+          }
+        });
+
+        const chartContainer = document.getElementById("chart-status");
+
+        if (todayData.length === 0) {
+          chartContainer.innerHTML =
+            '<p class="text-gray-500 text-center py-8">Belum ada data</p>';
+          return;
+        }
+
+        const maxCount = Math.max(...Object.values(statusCount));
+
+        chartContainer.innerHTML = Object.entries(statusCount)
+          .map(([status, count]) => {
+            const percentage = maxCount > 0 ? (count / maxCount) * 100 : 0;
+
+            const colors = {
+              Hadir: "bg-green-500",
+              Izin: "bg-blue-500",
+              Sakit: "bg-yellow-500",
+              Cuti: "bg-purple-500",
+              Alpa: "bg-red-500",
+            };
+
+            const icons = {
+              Hadir: "✅",
+              Izin: "📝",
+              Sakit: "🏥",
+              Cuti: "🏖️",
+              Alpa: "❌",
+            };
+
+            return `
+          <div class="flex items-center gap-4">
+            <div class="w-32 flex items-center gap-2">
+              <span class="text-xl">${icons[status]}</span>
+              <span class="font-semibold text-gray-700">${status}</span>
+            </div>
+            <div class="flex-1 bg-gray-200 rounded-full h-8 relative overflow-hidden">
+              <div class="${colors[status]} h-full rounded-full transition-all duration-500 flex items-center justify-end pr-3" style="width: ${percentage}%">
+                <span class="text-white font-bold text-sm">${count}</span>
+              </div>
+            </div>
+          </div>
+        `;
+          })
+          .join("");
+      }
+
+      // Event Listeners for Navigation
+      document
+        .getElementById("nav-absensi")
+        .addEventListener("click", () => showPage("absensi"));
+      document.getElementById("nav-admin").addEventListener("click", () => {
+        if (isAdminLoggedIn) {
+          showPage("admin");
+          showAdminTab("pengaturan");
+        } else {
+          showPage("login");
+        }
+      });
+
+      // Rekapan Bulanan Functions
+      function initBulananFilters() {
+        const currentYear = new Date().getFullYear();
+        const currentMonth = new Date().getMonth();
+        const yearSelect = document.getElementById("filter-tahun");
+
+        for (let i = 0; i <= 2; i++) {
+          const year = currentYear - i;
+          const option = document.createElement("option");
+          option.value = year;
+          option.textContent = year;
+          if (i === 0) option.selected = true;
+          yearSelect.appendChild(option);
+        }
+
+        document.getElementById("filter-bulan").value = currentMonth;
+      }
+
+      function renderRekapanBulanan() {
+        const bulan = parseInt(document.getElementById("filter-bulan").value);
+        const tahun = parseInt(document.getElementById("filter-tahun").value);
+
+        const daysInMonth = new Date(tahun, bulan + 1, 0).getDate();
+
+        const monthData = allAttendanceData.filter((item) => {
+          const itemDate = new Date(item.waktu_absen);
+          return (
+            itemDate.getMonth() === bulan && itemDate.getFullYear() === tahun
+          );
+        });
+
+        const personMap = new Map();
+        monthData.forEach((item) => {
+          const key = `${item.nama_lengkap}_${item.jabatan}`;
+          if (!personMap.has(key)) {
+            personMap.set(key, {
+              nama: item.nama_lengkap,
+              jabatan: item.jabatan,
+              attendance: {},
+            });
+          }
+
+          const itemDate = new Date(item.waktu_absen);
+          const date = itemDate.getDate();
+
+          personMap.get(key).attendance[date] = item.status_kehadiran;
+        });
+
+        const tbody = document.getElementById("tbody-bulanan");
+
+        if (personMap.size === 0) {
+          tbody.innerHTML = `
+          <tr>
+            <td colspan="37" class="border-2 border-gray-300 px-4 py-8 text-center text-gray-500">
+              Belum ada data untuk bulan ini
+            </td>
+          </tr>
+        `;
+          return;
+        }
+
+        const sortedPersons = Array.from(personMap.values()).sort((a, b) => {
+          return a.jabatan.localeCompare(b.jabatan);
+        });
+
+        tbody.innerHTML = sortedPersons
+          .map((person) => {
+            let sakit = 0,
+              izin = 0,
+              alpa = 0;
+
+            const dayCells = Array.from({ length: 31 }, (_, i) => {
+              const day = i + 1;
+
+              if (day > daysInMonth) {
+                return '<td class="border-2 border-gray-200 px-1 py-2 text-center bg-gray-100"></td>';
+              }
+
+              const status = person.attendance[day];
+              let cellContent = "-";
+              let cellClass = "bg-white";
+
+              if (status === "Hadir") {
+                cellContent = '<span class="font-bold text-green-600">H</span>';
+                cellClass = "bg-green-50";
+              } else if (status === "Sakit") {
+                cellContent =
+                  '<span class="font-bold text-yellow-600">S</span>';
+                cellClass = "bg-yellow-50";
+                sakit++;
+              } else if (status === "Izin") {
+                cellContent = '<span class="font-bold text-blue-600">I</span>';
+                cellClass = "bg-blue-50";
+                izin++;
+              } else if (status === "Alpa") {
+                cellContent = '<span class="font-bold text-red-600">A</span>';
+                cellClass = "bg-red-50";
+                alpa++;
+              } else if (status === "Cuti") {
+                cellContent =
+                  '<span class="font-bold text-purple-600">C</span>';
+                cellClass = "bg-purple-50";
+              }
+
+              return `<td class="border-2 border-gray-200 px-1 py-2 text-center text-xs ${cellClass}">${cellContent}</td>`;
+            }).join("");
+
+            const totalHadir = Object.values(person.attendance).filter(
+              (s) => s === "Hadir"
+            ).length;
+
+            return `
+          <tr class="hover:bg-gray-50">
+            <td class="border-2 border-gray-300 px-3 py-2 text-sm font-semibold">${person.jabatan}</td>
+            <td class="border-2 border-gray-300 px-3 py-2 text-sm font-semibold">${person.nama}</td>
+            ${dayCells}
+            <td class="border-2 border-gray-300 px-2 py-2 text-center font-bold text-yellow-700 bg-yellow-50">${sakit}</td>
+            <td class="border-2 border-gray-300 px-2 py-2 text-center font-bold text-blue-700 bg-blue-50">${izin}</td>
+            <td class="border-2 border-gray-300 px-2 py-2 text-center font-bold text-red-700 bg-red-50">${alpa}</td>
+            <td class="border-2 border-gray-300 px-3 py-2 text-center font-bold text-green-700 bg-green-50">${totalHadir}</td>
+          </tr>
+        `;
+          })
+          .join("");
+      }
+
+      function exportRekapanBulanan() {
+        const bulan = parseInt(document.getElementById("filter-bulan").value);
+        const tahun = parseInt(document.getElementById("filter-tahun").value);
+        const namaBulan =
+          document.getElementById("filter-bulan").options[bulan].text;
+
+        // Check if there's data for the selected month
+        const monthData = allAttendanceData.filter((item) => {
+          const itemDate = new Date(item.waktu_absen);
+          return (
+            itemDate.getMonth() === bulan && itemDate.getFullYear() === tahun
+          );
+        });
+
+        if (monthData.length === 0) {
+          const errorDiv = document.createElement("div");
+          errorDiv.className =
+            "fixed top-4 right-4 bg-yellow-500 text-white px-6 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2";
+          errorDiv.innerHTML =
+            '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg><span>Tidak ada data untuk bulan ini</span>';
+          document.body.appendChild(errorDiv);
+          setTimeout(() => errorDiv.remove(), 3000);
+          return;
+        }
+
+        try {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF("l", "mm", "a4"); // Landscape orientation
+
+          // KOP SURAT - Header Formal
+          doc.setFontSize(14);
+          doc.setFont(undefined, "bold");
+          const judulAplikasi =
+            window.elementSdk?.config?.judul_aplikasi ||
+            defaultConfig.judul_aplikasi;
+          const namaDesa =
+            window.elementSdk?.config?.nama_desa || defaultConfig.nama_desa;
+          doc.text(judulAplikasi.toUpperCase(), 148, 12, { align: "center" });
+
+          doc.setFontSize(11);
+          doc.setFont(undefined, "normal");
+          doc.text(namaDesa, 148, 18, { align: "center" });
+
+          // Garis pembatas kop
+          doc.setLineWidth(0.8);
+          doc.line(10, 22, 287, 22);
+          doc.setLineWidth(0.3);
+          doc.line(10, 23, 287, 23);
+
+          // Judul Dokumen
+          doc.setFontSize(13);
+          doc.setFont(undefined, "bold");
+          doc.text("REKAPAN ABSENSI BULANAN", 148, 30, { align: "center" });
+
+          doc.setFontSize(11);
+          doc.setFont(undefined, "normal");
+          doc.text(`${namaBulan} ${tahun}`, 148, 36, { align: "center" });
+
+          // Get data
+          const daysInMonth = new Date(tahun, bulan + 1, 0).getDate();
+
+          const personMap = new Map();
+          monthData.forEach((item) => {
+            const key = `${item.nama_lengkap}_${item.jabatan}`;
+            if (!personMap.has(key)) {
+              personMap.set(key, {
+                nama: item.nama_lengkap,
+                jabatan: item.jabatan,
+                attendance: {},
+              });
+            }
+
+            const itemDate = new Date(item.waktu_absen);
+            const date = itemDate.getDate();
+            personMap.get(key).attendance[date] = item.status_kehadiran;
+          });
+
+          const sortedPersons = Array.from(personMap.values()).sort((a, b) => {
+            return a.jabatan.localeCompare(b.jabatan);
+          });
+
+          // Prepare table data
+          const tableData = sortedPersons.map((person) => {
+            let sakit = 0,
+              izin = 0,
+              alpa = 0,
+              hadir = 0;
+            const row = [person.jabatan, person.nama];
+
+            // Add attendance for each day
+            for (let day = 1; day <= 31; day++) {
+              if (day > daysInMonth) {
+                row.push("");
+              } else {
+                const status = person.attendance[day];
+                if (status === "Hadir") {
+                  row.push("H");
+                  hadir++;
+                } else if (status === "Sakit") {
+                  row.push("S");
+                  sakit++;
+                } else if (status === "Izin") {
+                  row.push("I");
+                  izin++;
+                } else if (status === "Alpa") {
+                  row.push("A");
+                  alpa++;
+                } else if (status === "Cuti") {
+                  row.push("C");
+                } else {
+                  row.push("-");
+                }
+              }
+            }
+
+            // Add summary columns
+            row.push(sakit, izin, alpa, hadir);
+            return row;
+          });
+
+          // Create header
+          const headerRow1 = ["Jabatan", "Nama"];
+          for (let i = 1; i <= 31; i++) {
+            headerRow1.push(i.toString());
+          }
+          headerRow1.push("S", "I", "A", "JML");
+
+          // Create table with black and white styling for printing
+          doc.autoTable({
+            startY: 42,
+            head: [headerRow1],
+            body: tableData,
+            theme: "grid",
+            headStyles: {
+              fillColor: [255, 255, 255],
+              textColor: [0, 0, 0],
+              fontStyle: "bold",
+              halign: "center",
+              fontSize: 7,
+              lineWidth: 0.3,
+              lineColor: [0, 0, 0],
+            },
+            columnStyles: {
+              0: { cellWidth: 25, fontSize: 7 },
+              1: { cellWidth: 30, fontSize: 7 },
+            },
+            styles: {
+              fontSize: 6,
+              cellPadding: 1,
+              halign: "center",
+              valign: "middle",
+              lineWidth: 0.2,
+              lineColor: [0, 0, 0],
+              textColor: [0, 0, 0],
+            },
+            bodyStyles: {
+              fillColor: [255, 255, 255],
+            },
+            alternateRowStyles: {
+              fillColor: [245, 245, 245],
+            },
+            didParseCell: function (data) {
+              // Make summary columns bold
+              if (data.row.section === "body" && data.column.index >= 33) {
+                data.cell.styles.fontStyle = "bold";
+              }
+            },
+          });
+
+          // Add legend and signature
+          const finalY = doc.lastAutoTable.finalY + 5;
+
+          // Legend
+          doc.setFontSize(9);
+          doc.setFont(undefined, "bold");
+          doc.text("Keterangan:", 10, finalY);
+
+          doc.setFontSize(8);
+          doc.setFont(undefined, "normal");
+          const legendY = finalY + 5;
+          doc.text("H = Hadir", 10, legendY);
+          doc.text("S = Sakit", 35, legendY);
+          doc.text("I = Izin", 60, legendY);
+          doc.text("A = Alpa", 85, legendY);
+          doc.text("C = Cuti", 110, legendY);
+
+          // Signature section
+          const signY = finalY + 15;
+          const currentDate = new Date();
+          const printDate = currentDate.toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
+
+          doc.setFontSize(9);
+          doc.setFont(undefined, "normal");
+          doc.text(`${namaDesa}, ${printDate}`, 220, signY);
+
+          doc.setFont(undefined, "bold");
+          doc.text("Kepala Desa", 220, signY + 5);
+
+          // Space for signature
+          doc.setFont(undefined, "normal");
+          doc.text("(...........................)", 220, signY + 25);
+
+          // Footer
+          doc.setFontSize(7);
+          doc.setFont(undefined, "italic");
+          doc.text(
+            "Dokumen ini dicetak secara otomatis dari Sistem Absensi Perangkat Desa",
+            148,
+            205,
+            { align: "center" }
+          );
+
+          // Save and open PDF
+          const pdfBlob = doc.output("blob");
+          const pdfUrl = URL.createObjectURL(pdfBlob);
+
+          // Download PDF first
+          const downloadLink = document.createElement("a");
+          downloadLink.href = pdfUrl;
+          downloadLink.download = `Rekapan_Bulanan_${namaBulan}_${tahun}.pdf`;
+          downloadLink.click();
+
+          // Open PDF in new tab after a short delay
+          setTimeout(() => {
+            window.open(pdfUrl, "_blank");
+          }, 500);
+
+          // Show success message
+          const successDiv = document.createElement("div");
+          successDiv.className =
+            "fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2";
+          successDiv.innerHTML =
+            '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg><span>PDF berhasil diunduh dan dibuka!</span>';
+          document.body.appendChild(successDiv);
+          setTimeout(() => {
+            successDiv.remove();
+            URL.revokeObjectURL(pdfUrl);
+          }, 3000);
+        } catch (error) {
+          console.error("Error generating PDF:", error);
+          const errorDiv = document.createElement("div");
+          errorDiv.className =
+            "fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg z-50";
+          errorDiv.textContent = "Gagal membuat PDF. Silakan coba lagi.";
+          document.body.appendChild(errorDiv);
+          setTimeout(() => errorDiv.remove(), 3000);
+        }
+      }
+
+      // Rekapan Harian Functions
+      function initHarianFilter() {
+        const today = new Date().toISOString().split("T")[0];
+        document.getElementById("filter-tanggal").value = today;
+      }
+
+      function renderRekapanHarian() {
+        const selectedDate = document.getElementById("filter-tanggal").value;
+        if (!selectedDate) return;
+
+        const filterDate = new Date(selectedDate + "T00:00:00");
+
+        const dayData = allAttendanceData
+          .filter((item) => {
+            const itemDate = new Date(item.waktu_absen);
+            return (
+              itemDate.getFullYear() === filterDate.getFullYear() &&
+              itemDate.getMonth() === filterDate.getMonth() &&
+              itemDate.getDate() === filterDate.getDate()
+            );
+          })
+          .sort((a, b) => new Date(a.waktu_absen) - new Date(b.waktu_absen));
+
+        const tbody = document.getElementById("tbody-harian");
+
+        if (dayData.length === 0) {
+          tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="border-2 border-gray-300 px-4 py-8 text-center text-gray-500">
+              Belum ada data untuk tanggal ini
+            </td>
+          </tr>
+        `;
+
+          document.getElementById("summary-hadir").textContent = "0";
+          document.getElementById("summary-sakit").textContent = "0";
+          document.getElementById("summary-izin").textContent = "0";
+          document.getElementById("summary-cuti").textContent = "0";
+          document.getElementById("summary-alpa").textContent = "0";
+          return;
+        }
+
+        const statusCount = {
+          Hadir: 0,
+          Sakit: 0,
+          Izin: 0,
+          Cuti: 0,
+          Alpa: 0,
+        };
+
+        dayData.forEach((item) => {
+          if (statusCount.hasOwnProperty(item.status_kehadiran)) {
+            statusCount[item.status_kehadiran]++;
+          }
+        });
+
+        document.getElementById("summary-hadir").textContent =
+          statusCount["Hadir"];
+        document.getElementById("summary-sakit").textContent =
+          statusCount["Sakit"];
+        document.getElementById("summary-izin").textContent =
+          statusCount["Izin"];
+        document.getElementById("summary-cuti").textContent =
+          statusCount["Cuti"];
+        document.getElementById("summary-alpa").textContent =
+          statusCount["Alpa"];
+
+        tbody.innerHTML = dayData
+          .map((item, index) => {
+            const time = new Date(item.waktu_absen).toLocaleTimeString(
+              "id-ID",
+              {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              }
+            );
+
+            const statusConfig = {
+              Hadir: {
+                bg: "bg-green-50",
+                text: "text-green-800",
+                border: "border-green-300",
+                icon: "✅",
+              },
+              Izin: {
+                bg: "bg-blue-50",
+                text: "text-blue-800",
+                border: "border-blue-300",
+                icon: "📝",
+              },
+              Sakit: {
+                bg: "bg-yellow-50",
+                text: "text-yellow-800",
+                border: "border-yellow-300",
+                icon: "🏥",
+              },
+              Cuti: {
+                bg: "bg-purple-50",
+                text: "text-purple-800",
+                border: "border-purple-300",
+                icon: "🏖️",
+              },
+              Alpa: {
+                bg: "bg-red-50",
+                text: "text-red-800",
+                border: "border-red-300",
+                icon: "❌",
+              },
+            };
+
+            const status =
+              statusConfig[item.status_kehadiran] || statusConfig["Hadir"];
+
+            return `
+          <tr class="hover:bg-gray-50">
+            <td class="border-2 border-gray-300 px-4 py-3 text-center font-semibold">${
+              index + 1
+            }</td>
+            <td class="border-2 border-gray-300 px-4 py-3 font-semibold">${
+              item.nama_lengkap
+            }</td>
+            <td class="border-2 border-gray-300 px-4 py-3">${item.jabatan}</td>
+            <td class="border-2 border-gray-300 px-4 py-3 text-center">
+              <span class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold border-2 ${
+                status.bg
+              } ${status.text} ${status.border}">
+                <span class="text-base">${status.icon}</span>
+                ${item.status_kehadiran}
+              </span>
+            </td>
+            <td class="border-2 border-gray-300 px-4 py-3 text-center font-semibold">${time}</td>
+            <td class="border-2 border-gray-300 px-4 py-3 text-center">
+              <button onclick="deleteAttendanceItem({id: '${
+                item.id
+              }', type: 'attendance', nama_lengkap: '${item.nama_lengkap.replace(
+              /'/g,
+              "\\'"
+            )}', jabatan: '${item.jabatan.replace(
+              /'/g,
+              "\\'"
+            )}', status_kehadiran: '${item.status_kehadiran.replace(
+              /'/g,
+              "\\'"
+            )}', waktu_absen: '${
+              item.waktu_absen
+            }'}, '${item.nama_lengkap.replace(/'/g, "\\'")}')"
+                      class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg shadow transition-all">
+                Hapus
+              </button>
+            </td>
+          </tr>
+        `;
+          })
+          .join("");
+      }
+
+      function exportRekapanHarian() {
+        const selectedDate = document.getElementById("filter-tanggal").value;
+        if (!selectedDate) {
+          const errorDiv = document.createElement("div");
+          errorDiv.className =
+            "fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg z-50";
+          errorDiv.textContent = "Pilih tanggal terlebih dahulu";
+          document.body.appendChild(errorDiv);
+          setTimeout(() => errorDiv.remove(), 3000);
+          return;
+        }
+
+        // Check if there's data for the selected date
+        const filterDate = new Date(selectedDate + "T00:00:00");
+        const dayData = allAttendanceData.filter((item) => {
+          const itemDate = new Date(item.waktu_absen);
+          return (
+            itemDate.getFullYear() === filterDate.getFullYear() &&
+            itemDate.getMonth() === filterDate.getMonth() &&
+            itemDate.getDate() === filterDate.getDate()
+          );
+        });
+
+        if (dayData.length === 0) {
+          const errorDiv = document.createElement("div");
+          errorDiv.className =
+            "fixed top-4 right-4 bg-yellow-500 text-white px-6 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2";
+          errorDiv.innerHTML =
+            '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg><span>Tidak ada data untuk tanggal ini</span>';
+          document.body.appendChild(errorDiv);
+          setTimeout(() => errorDiv.remove(), 3000);
+          return;
+        }
+
+        const dateObj = new Date(selectedDate + "T00:00:00");
+        const dateStr = dateObj.toLocaleDateString("id-ID", {
+          weekday: "long",
+          year: "numeric",
+          month: "long",
+          day: "numeric",
+        });
+
+        try {
+          const { jsPDF } = window.jspdf;
+          const doc = new jsPDF("p", "mm", "a4");
+
+          // KOP SURAT - Header Formal
+          doc.setFontSize(14);
+          doc.setFont(undefined, "bold");
+          const judulAplikasi =
+            window.elementSdk?.config?.judul_aplikasi ||
+            defaultConfig.judul_aplikasi;
+          const namaDesa =
+            window.elementSdk?.config?.nama_desa || defaultConfig.nama_desa;
+          doc.text(judulAplikasi.toUpperCase(), 105, 20, { align: "center" });
+
+          doc.setFontSize(11);
+          doc.setFont(undefined, "normal");
+          doc.text(namaDesa, 105, 26, { align: "center" });
+
+          // Garis pembatas kop
+          doc.setLineWidth(0.8);
+          doc.line(15, 30, 195, 30);
+          doc.setLineWidth(0.3);
+          doc.line(15, 31, 195, 31);
+
+          // Judul Dokumen
+          doc.setFontSize(14);
+          doc.setFont(undefined, "bold");
+          doc.text("REKAPAN ABSENSI HARIAN", 105, 40, { align: "center" });
+
+          doc.setFontSize(11);
+          doc.setFont(undefined, "normal");
+          doc.text(dateStr, 105, 46, { align: "center" });
+
+          // Get table data
+          const sortedDayData = dayData.sort(
+            (a, b) => new Date(a.waktu_absen) - new Date(b.waktu_absen)
+          );
+
+          // Table data
+          const tableData = sortedDayData.map((item, index) => {
+            const time = new Date(item.waktu_absen).toLocaleTimeString(
+              "id-ID",
+              {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              }
+            );
+            return [
+              index + 1,
+              item.nama_lengkap,
+              item.jabatan,
+              item.status_kehadiran,
+              time,
+            ];
+          });
+
+          // Create table with professional styling
+          doc.autoTable({
+            startY: 52,
+            head: [
+              [
+                "No",
+                "Nama Lengkap",
+                "Jabatan",
+                "Status Kehadiran",
+                "Waktu Absen",
+              ],
+            ],
+            body: tableData,
+            theme: "grid",
+            headStyles: {
+              fillColor: [255, 255, 255],
+              textColor: [0, 0, 0],
+              fontStyle: "bold",
+              halign: "center",
+              lineWidth: 0.5,
+              lineColor: [0, 0, 0],
+            },
+            columnStyles: {
+              0: { halign: "center", cellWidth: 15 },
+              1: { cellWidth: 50 },
+              2: { cellWidth: 50 },
+              3: { halign: "center", cellWidth: 35 },
+              4: { halign: "center", cellWidth: 30 },
+            },
+            styles: {
+              fontSize: 10,
+              cellPadding: 4,
+              lineWidth: 0.3,
+              lineColor: [0, 0, 0],
+              textColor: [0, 0, 0],
+            },
+            bodyStyles: {
+              fillColor: [255, 255, 255],
+            },
+            alternateRowStyles: {
+              fillColor: [245, 245, 245],
+            },
+          });
+
+          // Summary Box
+          const finalY = doc.lastAutoTable.finalY + 8;
+
+          // Draw summary box
+          doc.setDrawColor(0, 0, 0);
+          doc.setLineWidth(0.5);
+          doc.rect(15, finalY, 180, 25);
+
+          doc.setFontSize(11);
+          doc.setFont(undefined, "bold");
+          doc.text("RINGKASAN KEHADIRAN:", 20, finalY + 7);
+
+          doc.setFontSize(10);
+          doc.setFont(undefined, "normal");
+          const summaryY = finalY + 14;
+          const hadirCount =
+            document.getElementById("summary-hadir").textContent;
+          const sakitCount =
+            document.getElementById("summary-sakit").textContent;
+          const izinCount = document.getElementById("summary-izin").textContent;
+          const cutiCount = document.getElementById("summary-cuti").textContent;
+          const alpaCount = document.getElementById("summary-alpa").textContent;
+
+          doc.text(`Hadir: ${hadirCount} orang`, 20, summaryY);
+          doc.text(`Sakit: ${sakitCount} orang`, 60, summaryY);
+          doc.text(`Izin: ${izinCount} orang`, 100, summaryY);
+          doc.text(`Cuti: ${cutiCount} orang`, 140, summaryY);
+          doc.text(`Alpa: ${alpaCount} orang`, 170, summaryY);
+
+          doc.setFont(undefined, "bold");
+          doc.text(`Total: ${dayData.length} orang`, 20, summaryY + 7);
+
+          // Signature section
+          const signY = finalY + 35;
+          const currentDate = new Date();
+          const printDate = currentDate.toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          });
+
+          doc.setFontSize(10);
+          doc.setFont(undefined, "normal");
+          doc.text(`${namaDesa}, ${printDate}`, 140, signY);
+
+          doc.setFont(undefined, "bold");
+          doc.text("Kepala Desa", 140, signY + 6);
+
+          // Space for signature
+          doc.setFont(undefined, "normal");
+          doc.text("(...........................)", 140, signY + 30);
+
+          // Footer
+          doc.setFontSize(8);
+          doc.setFont(undefined, "italic");
+          doc.text(
+            "Dokumen ini dicetak secara otomatis dari Sistem Absensi Perangkat Desa",
+            105,
+            285,
+            { align: "center" }
+          );
+
+          // Save and open PDF
+          const pdfBlob = doc.output("blob");
+          const pdfUrl = URL.createObjectURL(pdfBlob);
+
+          // Download PDF first
+          const downloadLink = document.createElement("a");
+          downloadLink.href = pdfUrl;
+          downloadLink.download = `Rekapan_Harian_${selectedDate}.pdf`;
+          downloadLink.click();
+
+          // Open PDF in new tab after a short delay
+          setTimeout(() => {
+            window.open(pdfUrl, "_blank");
+          }, 500);
+
+          // Show success message
+          const successDiv = document.createElement("div");
+          successDiv.className =
+            "fixed top-4 right-4 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2";
+          successDiv.innerHTML =
+            '<svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg><span>PDF berhasil diunduh dan dibuka!</span>';
+          document.body.appendChild(successDiv);
+          setTimeout(() => {
+            successDiv.remove();
+            URL.revokeObjectURL(pdfUrl);
+          }, 3000);
+        } catch (error) {
+          console.error("Error generating PDF:", error);
+          const errorDiv = document.createElement("div");
+          errorDiv.className =
+            "fixed top-4 right-4 bg-red-500 text-white px-6 py-3 rounded-xl shadow-lg z-50";
+          errorDiv.textContent = "Gagal membuat PDF. Silakan coba lagi.";
+          document.body.appendChild(errorDiv);
+          setTimeout(() => errorDiv.remove(), 3000);
+        }
+      }
+
+      // Event Listeners for Admin Tabs
+      document
+        .getElementById("tab-pengaturan")
+        .addEventListener("click", () => showAdminTab("pengaturan"));
+      document
+        .getElementById("tab-dashboard")
+        .addEventListener("click", () => showAdminTab("dashboard"));
+      document
+        .getElementById("tab-harian")
+        .addEventListener("click", () => showAdminTab("harian"));
+      document
+        .getElementById("tab-bulanan")
+        .addEventListener("click", () => showAdminTab("bulanan"));
+
+      // Event Listeners for Harian Filters
+      document
+        .getElementById("filter-tanggal")
+        .addEventListener("change", renderRekapanHarian);
+      document
+        .getElementById("btn-export-harian")
+        .addEventListener("click", exportRekapanHarian);
+
+      // Event Listeners for Bulanan Filters
+      document
+        .getElementById("filter-bulan")
+        .addEventListener("change", renderRekapanBulanan);
+      document
+        .getElementById("filter-tahun")
+        .addEventListener("change", renderRekapanBulanan);
+      document
+        .getElementById("btn-export-bulanan")
+        .addEventListener("click", exportRekapanBulanan);
+
+      // Initialize Filters
+      initHarianFilter();
+      initBulananFilters();
+
+      // Start checking attendance status
+      checkIntervalId = setInterval(checkAttendanceStatus, 60000);
+
+      // Initialize Data SDK
+      (async () => {
+        if (window.dataSdk) {
+          const initResult = await window.dataSdk.init(dataHandler);
+          if (!initResult.isOk) {
+            console.error("Failed to initialize data SDK");
+          }
+        }
+      })();
+
+      // --- Fitur Hapus Data Absensi ---
+      let itemToDeleteOnConfirm = null; // Variabel untuk menyimpan item sementara
+
+      async function deleteAttendanceItem(itemToDelete, itemName) {
+        if (!window.dataSdk) {
+          console.error("dataSdk not available");
+          return;
+        }
+
+        // Tampilkan modal konfirmasi
+        document.getElementById("delete-modal-item-name").textContent =
+          itemName;
+        document.getElementById("delete-modal").style.display = "block";
+        itemToDeleteOnConfirm = { ...itemToDelete }; // Simpan item ke variabel sementara
+      }
+
+      // Tambahkan event listener setelah DOM sepenuhnya dimuat
+      window.addEventListener("DOMContentLoaded", (event) => {
+        // Event Listener untuk Modal Konfirmasi Hapus
+        document
+          .getElementById("delete-modal-close")
+          .addEventListener("click", function () {
+            document.getElementById("delete-modal").style.display = "none";
+            itemToDeleteOnConfirm = null; // Reset item
+          });
+
+        document
+          .getElementById("delete-modal-btn-cancel")
+          .addEventListener("click", function () {
+            document.getElementById("delete-modal").style.display = "none";
+            itemToDeleteOnConfirm = null; // Reset item
+          });
+
+        document
+          .getElementById("delete-modal-btn-confirm")
+          .addEventListener("click", async function () {
+            let success = false;
+            try {
+              if (!itemToDeleteOnConfirm || !window.dataSdk) {
+                console.error("No item to delete or dataSdk not available");
+                alert("Tidak dapat menghapus data.absen.");
+                return;
+              }
+
+              // Kita tidak perlu mencari lagi di allAttendanceData karena itemToDeleteOnConfirm
+              // sekarang sudah memiliki 'id' dari Firebase. Kita bisa kirim langsung ke dataSdk.delete.
+              // Pastikan item memiliki id dan type
+              if (!itemToDeleteOnConfirm.id || !itemToDeleteOnConfirm.type) {
+                console.error("Item to delete is missing id or type property");
+                alert("Gagal menghapus: Data tidak valid.");
+                return;
+              }
+
+              const result = await window.dataSdk.delete(itemToDeleteOnConfirm);
+              if (result.isOk) {
+                // onDataChanged akan memperbarui allAttendanceData dan UI secara otomatis
+                console.log(
+                  "Data berhasil dihapus:",
+                  itemToDeleteOnConfirm.nama_lengkap
+                );
+                success = true;
+              } else {
+                console.error("Gagal menghapus data:", result.error);
+                alert("Gagal menghapus data. Silakan coba lagi.");
+              }
+            } catch (error) {
+              console.error("Error during delete operation:", error);
+              alert("Terjadi kesalahan saat menghapus data.");
+            } finally {
+              // Selalu tutup modal dan reset variabel di akhir, setelah semua proses selesai
+              document.getElementById("delete-modal").style.display = "none";
+              itemToDeleteOnConfirm = null; // Reset item
+              if (success) {
+                // Bisa tambahkan notifikasi sukses di sini jika diinginkan
+              }
+            }
+          });
+      });
+    </script>
+    <!-- Modal Konfirmasi Hapus -->
+    <div id="delete-modal">
+      <div id="delete-modal-content">
+        <div id="delete-modal-header">
+          <h3>Konfirmasi Hapus</h3>
+          <button id="delete-modal-close">&times;</button>
+        </div>
+        <div id="delete-modal-body">
+          Apakah Anda yakin ingin menghapus data absensi untuk
+          <span id="delete-modal-item-name"></span>?
+        </div>
+        <div id="delete-modal-footer">
+          <button
+            id="delete-modal-btn-cancel"
+            class="delete-modal-btn delete-modal-btn-cancel"
+          >
+            Batal
+          </button>
+          <button
+            id="delete-modal-btn-confirm"
+            class="delete-modal-btn delete-modal-btn-confirm"
+          >
+            Hapus
+          </button>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        function c() {
+          var b = a.contentDocument || a.contentWindow.document;
+          if (b) {
+            var d = b.createElement("script");
+            d.innerHTML =
+              "window.__CF$cv$params={r:'99c3a7aef28c6cf0',t:'MTc2Mjc1NzgzOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";
+            b.getElementsByTagName("head")[0].appendChild(d);
+          }
+        }
+        if (document.body) {
+          var a = document.createElement("iframe");
+          a.height = 1;
+          a.width = 1;
+          a.style.position = "absolute";
+          a.style.top = 0;
+          a.style.left = 0;
+          a.style.border = "none";
+          a.style.visibility = "hidden";
+          document.body.appendChild(a);
+          if ("loading" !== document.readyState) c();
+          else if (window.addEventListener)
+            document.addEventListener("DOMContentLoaded", c);
+          else {
+            var e = document.onreadystatechange || function () {};
+            document.onreadystatechange = function (b) {
+              e(b);
+              "loading" !== document.readyState &&
+                ((document.onreadystatechange = e), c());
+            };
+          }
+        }
+      })();
+    </script>
+  </body>
+</html>
